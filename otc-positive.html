@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>OTC 긍정 VOC 키워드 분석</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #fff; color: #1a1a1a; padding: 24px; max-width: 760px; margin: 0 auto; }
+  h1 { font-size: 20px; font-weight: 700; margin-bottom: 4px; }
+  .subtitle { font-size: 13px; color: #666; margin-bottom: 20px; }
+  .stats { display: flex; gap: 12px; margin-bottom: 20px; flex-wrap: wrap; }
+  .stat { background: #f0f7ff; border-radius: 8px; padding: 10px 14px; font-size: 13px; }
+  .stat b { color: #2563eb; }
+  .toggle-bar { display: flex; gap: 8px; margin-bottom: 20px; }
+  .toggle-btn { padding: 6px 14px; border-radius: 20px; border: 1.5px solid #ddd; background: #fff; font-size: 13px; cursor: pointer; transition: all 0.2s; }
+  .toggle-btn.active { background: #2563eb; color: #fff; border-color: #2563eb; }
+  .cat-item { margin-bottom: 6px; }
+  .cat-header { display: flex; align-items: center; gap: 10px; cursor: pointer; padding: 10px 12px; border-radius: 8px; transition: background 0.15s; }
+  .cat-header:hover { background: #f5f5f5; }
+  .cat-label { font-size: 14px; font-weight: 600; flex: 1; }
+  .bar-wrap { flex: 0 0 200px; height: 22px; background: #eef2f7; border-radius: 6px; overflow: hidden; }
+  .bar { height: 100%; background: linear-gradient(90deg, #3b82f6, #60a5fa); border-radius: 6px; transition: width 0.5s ease; min-width: 2px; }
+  .cat-count { font-size: 14px; font-weight: 700; color: #2563eb; min-width: 28px; text-align: right; }
+  .cat-pct { font-size: 12px; color: #888; min-width: 40px; text-align: right; }
+  .arrow { font-size: 12px; color: #aaa; transition: transform 0.2s; min-width: 16px; text-align: center; }
+  .arrow.open { transform: rotate(90deg); }
+  .voc-list { display: none; padding: 6px 12px 12px 20px; }
+  .voc-list.open { display: block; }
+  .voc-item { font-size: 12.5px; color: #555; padding: 5px 8px; border-left: 2px solid #d0d8e8; margin-bottom: 4px; line-height: 1.5; }
+  .summary { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 16px 18px; margin-top: 24px; }
+  .summary h3 { font-size: 14px; font-weight: 700; margin-bottom: 10px; display: flex; align-items: center; gap: 6px; }
+  .summary p { font-size: 13px; color: #444; line-height: 1.7; margin-bottom: 6px; }
+  .summary .highlight { color: #2563eb; font-weight: 600; }
+  .note { margin-top: 20px; background: #fffbeb; border: 1px solid #fde68a; border-radius: 8px; padding: 12px 14px; font-size: 12px; color: #92400e; line-height: 1.6; }
+  @media (max-width: 600px) { .bar-wrap { flex: 0 0 100px; } .stats { flex-direction: column; } }
+</style>
+</head>
+<body>
+
+<h1>OTC 제품 — 긍정 VOC 키워드 분석</h1>
+<div class="subtitle">Azelaic Acid Gel Cleanser (OTC) Concept Board: Positive Responses</div>
+
+<div class="stats">
+  <div class="stat">전체 응답 <b>120건</b></div>
+  <div class="stat">유효 응답 <b>101건</b></div>
+  <div class="stat">무효 (None/무관 등) <b>19건</b></div>
+</div>
+
+<div class="toggle-bar">
+  <button class="toggle-btn active" onclick="sortBy('count')">출현수순</button>
+  <button class="toggle-btn" onclick="sortBy('name')">이름순</button>
+</div>
+
+<div id="catList"></div>
+
+<div class="summary">
+  <h3>📊 분석 요약</h3>
+  <p><b>TOP 3:</b> <span class="highlight">여드름/피부 고민 케어 (30)</span> → <span class="highlight">저자극/민감성 피부 적합 (25)</span> → <span class="highlight">세정력/클렌징 효과 (22)</span></p>
+  <p><b>성분 관련:</b> 살리실산, 아젤라익산 등 특정 성분 언급 7건 — 성분에 대한 인지·관심 존재</p>
+  <p><b>피부과 공동개발:</b> 피부과 전문의 협업 언급 5건 — 전문성·신뢰도에 대한 호감</p>
+  <p><b>패키징:</b> 디자인·색상에 대한 긍정 반응 12건 — 심플하고 깔끔한 인상이 호평</p>
+  <p><b>주목 포인트:</b> 여드름 케어 + 저자극이라는 <span class="highlight">두 가지 핵심 소구점</span>이 전체 긍정 VOC의 과반(54%)을 차지함</p>
+</div>
+
+<div class="note">
+  ⚠️ 참고: 하나의 응답에 복수 키워드가 포함된 경우, 각각 개별 카운팅됩니다 (중복 카운팅 있음).
+</div>
+
+<script>
+const categories = [
+  {
+    name: "여드름/피부 고민 케어",
+    count: 30,
+    pct: "29.7%",
+    vocs: [
+      "The product can effectively clean the skin, reduce acne, which makes me really like it.",
+      "I like it because it suits my sensitive skin and can effectively improve blackheads and oily acne.",
+      "It can effectively target acne problems on the skin, which perfectly meets my needs.",
+      "Its ingredients are also clearly suitable for acne-prone skin care.",
+      "It's a product that can clear up my acne, and I like that about it.",
+      "This mild gel-like product will foam up when used, effectively removing impurities and excess oil without causing irritation. It is particularly suitable for acne-prone skin.",
+      "That it's for acne prone users.",
+      "It can not only remove the dirt from the pores, but also prevent new pimples and blackheads.",
+      "The product can deeply cleanse the pores and effectively treat acne.",
+      "Gentle yet oil-controlling, and it can also improve acne.",
+      "The ingredients it contains can effectively treat acne.",
+      "I like that it would help get rid or and then prevent acne.",
+      "The Acne prone skin focus!",
+      "It is suitable for acne - prone and sensitive skin as it contains no irritating ingredients.",
+      "i have acne prone blemishy skin and it drives me nuts. i want it fixed",
+      "Because it can effectively clear up acne and really works, I like it.",
+      "This product is just right for my oily skin and can solve my facial problems.",
+      "In terms of its effectiveness, it can effectively improve various skin conditions of mine and alleviate acne symptoms.",
+      "The formula is gentle and suitable for sensitive acne-prone skin. It has a definite acne-removing effect and is safe to use.",
+      "The formula is mild and suitable for sensitive acne-prone skin. It also has a significant effect in treating acne.",
+      "It is very suitable for acne-prone skin and works very quickly. I really like it.",
+      "This product can prevent blackheads from appearing, which is one thing I like about it.",
+      "help with acne",
+      "It's preventative against acne and the formula is foam",
+      "It fit into a typical skincare routine, especially for someone managing breakout or oily skin",
+      "I really enjoy being able to gently remove the oily secretions from within the pores.",
+      "The appealing feature is that it can effectively remove oil and blackheads.",
+      "Great for the skin and acne (mentioned in context)",
+      "It is easy when wanting to remove impurities and excess cleanser for acne probe skin",
+      "What I like about this product is that it is great for my skin"
+    ]
+  },
+  {
+    name: "저자극/민감성 피부 적합",
+    count: 25,
+    pct: "24.8%",
+    vocs: [
+      "It achieves a good balance between cleaning power and mildness.",
+      "This mild gel-like product will foam up when used, effectively removing impurities and excess oil without causing irritation.",
+      "Its ingredients are gentle and non-irritating, and its texture is very refreshing.",
+      "The formula is gentle and suitable for sensitive acne-prone skin.",
+      "The formula is mild and suitable for sensitive acne-prone skin.",
+      "Its texture is very gentle, and after washing your face, it doesn't feel tight.",
+      "Suitable for various skin types, very safe and non-irritating. I really like it.",
+      "It produces rich foam and is suitable for sensitive skin.",
+      "Suitable for sensitive skin, does not irritate the skin.",
+      "Gentle gel with abundant bubbles, mild and non-irritating",
+      "I like that its formula is gentle and doesn't irritate the skin.",
+      "I like its gentle way of use; its suitable for sensitive skin and quite high quality.",
+      "It is suitable for acne - prone and sensitive skin as it contains no irritating ingredients.",
+      "I like that it is co developed with a dermatologist & looks gentle.",
+      "Very little chemicals",
+      "The gentle gel formula",
+      "The softness it leaves after using it and the smell",
+      "It's light weight on the skin",
+      "I like the simple design and clean ingredients",
+      "I like products to have professionalism and help improve skin smoothness.",
+      "I like it because it suits my sensitive skin and can effectively improve blackheads and oily acne.",
+      "Its texture is very gentle, and after washing your face, it doesn't feel tight.",
+      "Gentle yet oil-controlling, and it can also improve acne.",
+      "It achieves a good balance between cleaning power and mildness. Its gel texture is very smooth.",
+      "I love the gentle texture on skin (mentioned in context)"
+    ]
+  },
+  {
+    name: "세정력/클렌징 효과",
+    count: 22,
+    pct: "21.8%",
+    vocs: [
+      "The product can effectively clean the skin, reduce acne.",
+      "The ingredients of this product are safe and can deeply clean pores.",
+      "The product can deeply cleanse the pores and effectively treat acne.",
+      "This product has strong cleansing power and can effectively remove cosmetic residues",
+      "The size of the product meets my daily needs and effectively cleans the pores.",
+      "Its cleansing ability is outstanding, and the packaging design is clean and fresh.",
+      "That it removes impurities.",
+      "that it will help my face",
+      "Helps wash off all the dirt",
+      "It cleanses your face",
+      "It cleanses very well and provides long-lasting hydration.",
+      "I really enjoy being able to gently remove the oily secretions from within the pores.",
+      "The appealing feature is that it can effectively remove oil and blackheads.",
+      "It can not only remove the dirt from the pores, but also prevent new pimples and blackheads.",
+      "The product's fluffy texture enables it to effectively cleanse the skin.",
+      "I like that its ingredients effectively remove dirt while also moisturizing the skin.",
+      "It has very strong cleaning power, so I'm going to like it",
+      "It keep my skin fresh",
+      "It is easy when wanting to remove impurities and excess cleanser for acne probe skin",
+      "I like it because it does a great job of cleaning my face.",
+      "The product can effectively clean the skin, reduce acne, which makes me really like it.",
+      "Its effective"
+    ]
+  },
+  {
+    name: "패키징 디자인 호감",
+    count: 12,
+    pct: "11.9%",
+    vocs: [
+      "Its packaging design is very trendy, incorporating many popular elements.",
+      "I really like the product's unique design and the transparency of its information.",
+      "I like the color combinations of the packaging to be personalized.",
+      "The packaging of the product looks very beautiful and I really like it.",
+      "The colors of the bottle",
+      "I think the packaging is simple",
+      "I enjoy the simple packaging design",
+      "I love the image of the product",
+      "I think that the packaging is simple but striking",
+      "Simple and clean looking",
+      "The design",
+      "packaging"
+    ]
+  },
+  {
+    name: "젤/폼 텍스처 선호",
+    count: 11,
+    pct: "10.9%",
+    vocs: [
+      "Its gel texture is very smooth and suitable for general use.",
+      "The product's fluffy texture enables it to effectively cleanse the skin.",
+      "Gentle gel with abundant bubbles, mild and non-irritating",
+      "It produces rich foam and is suitable for sensitive skin.",
+      "The bubbles",
+      "I love that it's a gel cleanser",
+      "gel cleanser",
+      "Foam",
+      "Gel cleanser",
+      "The texture",
+      "It's preventative against acne and the formula is foam"
+    ]
+  },
+  {
+    name: "성분 관심/신뢰",
+    count: 7,
+    pct: "6.9%",
+    vocs: [
+      "The ingredients",
+      "It has Salicylic acid",
+      "No AHA or BHA",
+      "ingredients",
+      "The ingredients",
+      "I love the ingredients used especially the use of organic materials",
+      "I like the simple design and clean ingredients"
+    ]
+  },
+  {
+    name: "보습/수분 효과",
+    count: 6,
+    pct: "5.9%",
+    vocs: [
+      "It cleanses very well and provides long-lasting hydration.",
+      "I like that its ingredients effectively remove dirt while also moisturizing the skin.",
+      "Its texture is very gentle, and after washing your face, it doesn't feel tight.",
+      "It does not claim to have moisturizing effects (reverse ref).",
+      "The softness it leaves after using it and the smell",
+      "I like that it looks like its hydrating, at least from the picture"
+    ]
+  },
+  {
+    name: "피부과 전문의 공동개발",
+    count: 5,
+    pct: "5.0%",
+    vocs: [
+      "I like that it is co developed with a dermatologist & looks gentle.",
+      "approved by a dermatologist",
+      "made by dermatologist",
+      "Developed jointly with dermatologists to ensure the safety and professionalism of the product.",
+      "It's doctor-approved, so I trust its safety and effectiveness."
+    ]
+  },
+  {
+    name: "브랜드 신뢰도",
+    count: 5,
+    pct: "5.0%",
+    vocs: [
+      "Unilever has a high reputation and its brands are very reliable.",
+      "This is a very well-known brand, and I often hear positive reviews about it.",
+      "I like the brand and this product looks like I would enjoy it",
+      "Very good Brand",
+      "I like the product brand. I like the functionality. I like how simple it is to use."
+    ]
+  },
+  {
+    name: "가성비/용량",
+    count: 4,
+    pct: "4.0%",
+    vocs: [
+      "This product has a large capacity and offers excellent value for money.",
+      "The size of the product meets my daily needs and effectively cleans the pores.",
+      "I think this is a product with a large capacity, so I like it.",
+      "The price"
+    ]
+  },
+  {
+    name: "새로움/혁신적 느낌",
+    count: 4,
+    pct: "4.0%",
+    vocs: [
+      "Oh, like I was innovative it's different",
+      "Seems like a new and interesting product.",
+      "It's a new kind.",
+      "Something new"
+    ]
+  },
+  {
+    name: "제품 정보 투명성",
+    count: 3,
+    pct: "3.0%",
+    vocs: [
+      "I really like the product's unique design and the transparency of its information.",
+      "it is easy to read the product",
+      "After reading the introduction about it, I think its very effective."
+    ]
+  }
+];
+
+let currentSort = "count";
+
+function render() {
+  const sorted = [...categories].sort((a, b) => {
+    if (currentSort === "count") return b.count - a.count;
+    return a.name.localeCompare(b.name, 'ko');
+  });
+  const maxCount = Math.max(...sorted.map(c => c.count));
+  const list = document.getElementById("catList");
+  list.innerHTML = sorted.map((cat, i) => `
+    <div class="cat-item">
+      <div class="cat-header" onclick="toggleVoc(${i})">
+        <span class="arrow" id="arrow-${i}">▶</span>
+        <span class="cat-label">${cat.name}</span>
+        <div class="bar-wrap"><div class="bar" style="width:${(cat.count/maxCount)*100}%"></div></div>
+        <span class="cat-count">${cat.count}</span>
+        <span class="cat-pct">${cat.pct}</span>
+      </div>
+      <div class="voc-list" id="voc-${i}">
+        ${cat.vocs.map(v => `<div class="voc-item">${v}</div>`).join("")}
+      </div>
+    </div>
+  `).join("");
+}
+
+function toggleVoc(i) {
+  const list = document.getElementById(`voc-${i}`);
+  const arrow = document.getElementById(`arrow-${i}`);
+  list.classList.toggle("open");
+  arrow.classList.toggle("open");
+}
+
+function sortBy(type) {
+  currentSort = type;
+  document.querySelectorAll(".toggle-btn").forEach(b => b.classList.remove("active"));
+  event.target.classList.add("active");
+  render();
+}
+
+render();
+</script>
+
+</body>
+</html>
