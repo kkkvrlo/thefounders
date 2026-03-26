@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>OTC 부정 VOC 키워드 분석</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #fff; color: #1a1a1a; padding: 24px; max-width: 760px; margin: 0 auto; }
+  h1 { font-size: 20px; font-weight: 700; margin-bottom: 4px; }
+  .subtitle { font-size: 13px; color: #666; margin-bottom: 20px; }
+  .stats { display: flex; gap: 12px; margin-bottom: 20px; flex-wrap: wrap; }
+  .stat { background: #fff5f5; border-radius: 8px; padding: 10px 14px; font-size: 13px; }
+  .stat b { color: #dc2626; }
+  .toggle-bar { display: flex; gap: 8px; margin-bottom: 20px; }
+  .toggle-btn { padding: 6px 14px; border-radius: 20px; border: 1.5px solid #ddd; background: #fff; font-size: 13px; cursor: pointer; transition: all 0.2s; }
+  .toggle-btn.active { background: #dc2626; color: #fff; border-color: #dc2626; }
+  .cat-item { margin-bottom: 6px; }
+  .cat-header { display: flex; align-items: center; gap: 10px; cursor: pointer; padding: 10px 12px; border-radius: 8px; transition: background 0.15s; }
+  .cat-header:hover { background: #f5f5f5; }
+  .cat-label { font-size: 14px; font-weight: 600; flex: 1; }
+  .bar-wrap { flex: 0 0 200px; height: 22px; background: #fef2f2; border-radius: 6px; overflow: hidden; }
+  .bar { height: 100%; background: linear-gradient(90deg, #ef4444, #f87171); border-radius: 6px; transition: width 0.5s ease; min-width: 2px; }
+  .cat-count { font-size: 14px; font-weight: 700; color: #dc2626; min-width: 28px; text-align: right; }
+  .cat-pct { font-size: 12px; color: #888; min-width: 40px; text-align: right; }
+  .arrow { font-size: 12px; color: #aaa; transition: transform 0.2s; min-width: 16px; text-align: center; }
+  .arrow.open { transform: rotate(90deg); }
+  .voc-list { display: none; padding: 6px 12px 12px 20px; }
+  .voc-list.open { display: block; }
+  .voc-item { font-size: 12.5px; color: #555; padding: 5px 8px; border-left: 2px solid #fca5a5; margin-bottom: 4px; line-height: 1.5; }
+  .summary { background: #fef7f7; border: 1px solid #fecaca; border-radius: 10px; padding: 16px 18px; margin-top: 24px; }
+  .summary h3 { font-size: 14px; font-weight: 700; margin-bottom: 10px; display: flex; align-items: center; gap: 6px; }
+  .summary p { font-size: 13px; color: #444; line-height: 1.7; margin-bottom: 6px; }
+  .summary .highlight { color: #dc2626; font-weight: 600; }
+  .note { margin-top: 20px; background: #fffbeb; border: 1px solid #fde68a; border-radius: 8px; padding: 12px 14px; font-size: 12px; color: #92400e; line-height: 1.6; }
+  @media (max-width: 600px) { .bar-wrap { flex: 0 0 100px; } .stats { flex-direction: column; } }
+</style>
+</head>
+<body>
+
+<h1>OTC 제품 — 부정 VOC 키워드 분석</h1>
+<div class="subtitle">Azelaic Acid Gel Cleanser (OTC) Concept Board: Negative Responses</div>
+
+<div class="stats">
+  <div class="stat">전체 응답 <b>120건</b></div>
+  <div class="stat">유효 응답 <b>72건</b></div>
+  <div class="stat">무효 (Nothing/None/무관 등) <b>48건</b></div>
+</div>
+
+<div class="toggle-bar">
+  <button class="toggle-btn active" onclick="sortBy('count')">출현수순</button>
+  <button class="toggle-btn" onclick="sortBy('name')">이름순</button>
+</div>
+
+<div id="catList"></div>
+
+<div class="summary">
+  <h3>📊 분석 요약</h3>
+  <p><b>TOP 3:</b> <span class="highlight">패키징 디자인 불만 (22)</span> → <span class="highlight">제품 정보 부족 (11)</span> → <span class="highlight">차별성/혁신성 부족 (9)</span></p>
+  <p><b>패키징 이슈:</b> 전체 유효 부정 VOC의 약 30%가 패키징 관련 — "generic", "cheap", "outdated" 등의 표현 반복. 디자인 리뉴얼이 가장 시급한 개선 포인트.</p>
+  <p><b>정보 부족:</b> 성분 상세 설명, 적합 피부 타입, 사용 효과 등에 대한 정보가 부족하다는 의견 다수.</p>
+  <p><b>효과 속도:</b> 아젤라익산 농도가 낮아 효과가 느리다는 구체적 피드백 존재 — 즉효성 기대에 대한 커뮤니케이션 필요.</p>
+  <p><b>주목 포인트:</b> 부정 응답 중 <span class="highlight">40%가 "Nothing/None"</span>으로, 뚜렷한 불만이 없는 응답자도 많음.</p>
+</div>
+
+<div class="note">
+  ⚠️ 참고: 하나의 응답에 복수 키워드가 포함된 경우, 각각 개별 카운팅됩니다 (중복 카운팅 있음).
+</div>
+
+<script>
+const categories = [
+  {
+    name: "패키징 디자인 불만",
+    count: 22,
+    pct: "30.6%",
+    vocs: [
+      "The ugly packaging and outdated color combination don't really appeal to me.",
+      "The packaging design is very monotonous in color and lacks innovation.",
+      "I don't like its packaging design; it looks too outdated.",
+      "The packaging looks a bit outdated and rather ugly.",
+      "The packaging form is not attractive enough and it's inconvenient for me to use.",
+      "The color and design of the packaging look quite cheap.",
+      "The text descriptions on the packaging are not clearly printed and do not appeal to me.",
+      "I don't like the packaging of this product; I think its very plain",
+      "The packaging looks generic and a bit cheap",
+      "The packaging looks really similar to other brands like Cetaphil",
+      "Looks cheap",
+      "Looks bland",
+      "the design is unattractive.",
+      "looks too generic and harsh",
+      "packaging isnt peak",
+      "The green AZ logo, maybe different color",
+      "In terms of packaging design, it's too simple.",
+      "The colors in the background",
+      "The name",
+      "colors",
+      "The font is a little weird",
+      "the cover"
+    ]
+  },
+  {
+    name: "제품 정보/설명 부족",
+    count: 11,
+    pct: "15.3%",
+    vocs: [
+      "The information on the packaging is not very comprehensive, so the understanding of the product is not deep enough.",
+      "There is no detailed description of the product formula's effectiveness, which needs to be verified.",
+      "Lack of detailed explanations regarding the key information about the efficacy",
+      "It does not elaborate much on its ingredients, and the information is unclear.",
+      "I dont like product information introductions that are too brief and incomplete.",
+      "I dont like when the information on the packaging is not comprehensive and detailed enough.",
+      "I wish that he gave me more information on the back of what it contains",
+      "nora. lot of information on prodcut",
+      "Not knowing about it much before seeing this",
+      "there limited detail about concentration of active ingredients or additional skin benefit",
+      "Doesn't tell what ingredients are in it or how it works"
+    ]
+  },
+  {
+    name: "차별성/혁신성 부족",
+    count: 9,
+    pct: "12.5%",
+    vocs: [
+      "It looks rather generic.",
+      "it's nothing new.",
+      "It's a bit basic.",
+      "Does not feel very unique compared to other products on the market",
+      "It's nothing unique",
+      "The packaging looks really similar to other brands like Cetaphil",
+      "looks too generic and harsh",
+      "I don't like that I can't say what the acid is, I tend to prefer things that I can say cause they seem less gimmicky",
+      "Its packaging design isn't fresh or trendy enough, which makes me feel its not innovative."
+    ]
+  },
+  {
+    name: "효과 느림/즉효성 부족",
+    count: 7,
+    pct: "9.7%",
+    vocs: [
+      "Although the ingredients are very safe, this also means the results take longer to show.",
+      "The effects will only become apparent after long-term use. It may take some time.",
+      "The effect appears too slowly and it needs to be used for a long time.",
+      "The concentration of azelaic acid is too low, so the effect takes too long to show.",
+      "The concentration of salicylic acid is only 5%, which is not sufficient to have a significant effect on severe acne.",
+      "It is not very effective in cleaning some heavy makeup and grease.",
+      "The thing I don't like is that the cleaning might not be strong enough."
+    ]
+  },
+  {
+    name: "용량/사이즈 불만",
+    count: 6,
+    pct: "8.3%",
+    vocs: [
+      "I do not like that the product offers too little volume; it makes me feel that it is not durable.",
+      "The packaging size is too small and does not meet my daily usage requirements.",
+      "The content is too little, not enough to use.",
+      "This product's packaging size is too small; it would be better if there was a larger amount.",
+      "The bottle is a bit large, so its not practical to carry around.",
+      "Package size"
+    ]
+  },
+  {
+    name: "건조함/보습력 부족",
+    count: 5,
+    pct: "6.9%",
+    vocs: [
+      "It does not claim to have moisturizing effects. After washing your face, it might feel dry.",
+      "One thing I really dislike is that the moisturizing effect is too weak. After using it, my skin feels very tight.",
+      "That it was drying my skin",
+      "What I don't like is that it has a pretty strong smell when you use it. (dryness context)",
+      "It doesn't provide too much detail in regards to the cream itself"
+    ]
+  },
+  {
+    name: "향/냄새 불만",
+    count: 4,
+    pct: "5.6%",
+    vocs: [
+      "It has almost no fragrance, and I don't really like unscented products like this.",
+      "I don't like it because its smell is really pungent, so I end up disliking it more than liking it",
+      "What I don't like is that it has a pretty strong smell when you use it.",
+      "I don't like that it lathers too much-it stings my eyes."
+    ]
+  },
+  {
+    name: "자극/알레르기 우려",
+    count: 5,
+    pct: "6.9%",
+    vocs: [
+      "The thing I don't like is that there will be an allergic reaction when using it.",
+      "The ingredients are not particularly potent and can irritate the skin.",
+      "However, it does not specify whether it contains alcohol or additives, which is not very friendly for sensitive skin.",
+      "However, its skin application range is rather narrow and can be quite irritating for healthy skin.",
+      "The added ingredients might cause allergies, and I'm concerned that it might not clean well enough."
+    ]
+  },
+  {
+    name: "가격 불만",
+    count: 3,
+    pct: "4.2%",
+    vocs: [
+      "The thing I don't like is that the price is too high and I can't afford it.",
+      "Price",
+      "Likely cost"
+    ]
+  },
+  {
+    name: "피부 타입 한정",
+    count: 4,
+    pct: "5.6%",
+    vocs: [
+      "Lack of specific guidance tailored to different skin types",
+      "The thing I don't like is that it doesn't specify the suitable skin type.",
+      "Only for acne prone skin.",
+      "i dont struggle with acne."
+    ]
+  },
+  {
+    name: "사용 편의성 불만",
+    count: 4,
+    pct: "5.6%",
+    vocs: [
+      "Its bottle cap design is not reasonable, which makes it inconvenient for users to use.",
+      "It produces relatively little foam, and the tube cap is not sturdy.",
+      "The packaging is not convenient for storage.",
+      "The fact that it's in a squeeze bottle"
+    ]
+  },
+  {
+    name: "폼/거품 불만",
+    count: 3,
+    pct: "4.2%",
+    vocs: [
+      "What I don't like is that the foam doesn't feel as smooth as it should be.",
+      "It produces relatively little foam, and the tube cap is not sturdy.",
+      "It creates foam is what I least like about the product"
+    ]
+  }
+];
+
+let currentSort = "count";
+
+function render() {
+  const sorted = [...categories].sort((a, b) => {
+    if (currentSort === "count") return b.count - a.count;
+    return a.name.localeCompare(b.name, 'ko');
+  });
+  const maxCount = Math.max(...sorted.map(c => c.count));
+  const list = document.getElementById("catList");
+  list.innerHTML = sorted.map((cat, i) => `
+    <div class="cat-item">
+      <div class="cat-header" onclick="toggleVoc(${i})">
+        <span class="arrow" id="arrow-${i}">▶</span>
+        <span class="cat-label">${cat.name}</span>
+        <div class="bar-wrap"><div class="bar" style="width:${(cat.count/maxCount)*100}%"></div></div>
+        <span class="cat-count">${cat.count}</span>
+        <span class="cat-pct">${cat.pct}</span>
+      </div>
+      <div class="voc-list" id="voc-${i}">
+        ${cat.vocs.map(v => `<div class="voc-item">${v}</div>`).join("")}
+      </div>
+    </div>
+  `).join("");
+}
+
+function toggleVoc(i) {
+  const list = document.getElementById(`voc-${i}`);
+  const arrow = document.getElementById(`arrow-${i}`);
+  list.classList.toggle("open");
+  arrow.classList.toggle("open");
+}
+
+function sortBy(type) {
+  currentSort = type;
+  document.querySelectorAll(".toggle-btn").forEach(b => b.classList.remove("active"));
+  event.target.classList.add("active");
+  render();
+}
+
+render();
+</script>
+
+</body>
+</html>
