@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Non-OTC 긍정 VOC 키워드 분석</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #fff; color: #1a1a1a; padding: 24px; max-width: 760px; margin: 0 auto; }
+  h1 { font-size: 20px; font-weight: 700; margin-bottom: 4px; }
+  .subtitle { font-size: 13px; color: #666; margin-bottom: 20px; }
+  .stats { display: flex; gap: 12px; margin-bottom: 20px; flex-wrap: wrap; }
+  .stat { background: #f0fdf4; border-radius: 8px; padding: 10px 14px; font-size: 13px; }
+  .stat b { color: #16a34a; }
+  .toggle-bar { display: flex; gap: 8px; margin-bottom: 20px; }
+  .toggle-btn { padding: 6px 14px; border-radius: 20px; border: 1.5px solid #ddd; background: #fff; font-size: 13px; cursor: pointer; transition: all 0.2s; }
+  .toggle-btn.active { background: #16a34a; color: #fff; border-color: #16a34a; }
+  .cat-item { margin-bottom: 6px; }
+  .cat-header { display: flex; align-items: center; gap: 10px; cursor: pointer; padding: 10px 12px; border-radius: 8px; transition: background 0.15s; }
+  .cat-header:hover { background: #f5f5f5; }
+  .cat-label { font-size: 14px; font-weight: 600; flex: 1; }
+  .bar-wrap { flex: 0 0 200px; height: 22px; background: #f0fdf4; border-radius: 6px; overflow: hidden; }
+  .bar { height: 100%; background: linear-gradient(90deg, #22c55e, #4ade80); border-radius: 6px; transition: width 0.5s ease; min-width: 2px; }
+  .cat-count { font-size: 14px; font-weight: 700; color: #16a34a; min-width: 28px; text-align: right; }
+  .cat-pct { font-size: 12px; color: #888; min-width: 40px; text-align: right; }
+  .arrow { font-size: 12px; color: #aaa; transition: transform 0.2s; min-width: 16px; text-align: center; }
+  .arrow.open { transform: rotate(90deg); }
+  .voc-list { display: none; padding: 6px 12px 12px 20px; }
+  .voc-list.open { display: block; }
+  .voc-item { font-size: 12.5px; color: #555; padding: 5px 8px; border-left: 2px solid #86efac; margin-bottom: 4px; line-height: 1.5; }
+  .summary { background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 10px; padding: 16px 18px; margin-top: 24px; }
+  .summary h3 { font-size: 14px; font-weight: 700; margin-bottom: 10px; display: flex; align-items: center; gap: 6px; }
+  .summary p { font-size: 13px; color: #444; line-height: 1.7; margin-bottom: 6px; }
+  .summary .highlight { color: #16a34a; font-weight: 600; }
+  .note { margin-top: 20px; background: #fffbeb; border: 1px solid #fde68a; border-radius: 8px; padding: 12px 14px; font-size: 12px; color: #92400e; line-height: 1.6; }
+  @media (max-width: 600px) { .bar-wrap { flex: 0 0 100px; } .stats { flex-direction: column; } }
+</style>
+</head>
+<body>
+
+<h1>Non-OTC 제품 — 긍정 VOC 키워드 분석</h1>
+<div class="subtitle">Azelaic Acid Gel Cleanser (Non-OTC) Concept Board: Positive Responses</div>
+
+<div class="stats">
+  <div class="stat">전체 응답 <b>120건</b></div>
+  <div class="stat">유효 응답 <b>99건</b></div>
+  <div class="stat">무효 (None/idk/무관 등) <b>21건</b></div>
+</div>
+
+<div class="toggle-bar">
+  <button class="toggle-btn active" onclick="sortBy('count')">출현수순</button>
+  <button class="toggle-btn" onclick="sortBy('name')">이름순</button>
+</div>
+
+<div id="catList"></div>
+
+<div class="summary">
+  <h3>📊 분석 요약</h3>
+  <p><b>TOP 3:</b> <span class="highlight">성분 관심/신뢰 (28)</span> → <span class="highlight">저자극/민감성 피부 적합 (22)</span> → <span class="highlight">세정력/클렌징 효과 (13)</span></p>
+  <p><b>히알루론산 단독 언급:</b> 9건 — Non-OTC 컨셉에서 히알루론산이 가장 눈에 띄는 성분으로 작용. OTC 대비 특정 성분 인지도가 높음.</p>
+  <p><b>피부과 공동개발:</b> 10건으로 OTC(5건)의 2배 — Non-OTC 컨셉에서 전문성 소구가 더 강하게 전달됨.</p>
+  <p><b>패키징:</b> 12건 긍정 반응. "simple", "elegant", "innovative" 등 OTC보다 세련된 인상.</p>
+  <p><b>OTC와의 차이:</b> OTC는 "여드름 케어"가 1위였지만 Non-OTC는 <span class="highlight">"성분"이 1위</span> — 성분 중심 소구가 Non-OTC의 강점.</p>
+</div>
+
+<div class="note">
+  ⚠️ 참고: 하나의 응답에 복수 키워드가 포함된 경우, 각각 개별 카운팅됩니다 (중복 카운팅 있음).
+</div>
+
+<script>
+const categories = [
+  {
+    name: "성분 관심/신뢰",
+    count: 28,
+    pct: "28.3%",
+    vocs: [
+      "it involves hylaronic acid",
+      "It has a high concentration of active ingredients and is gentle on the skin.",
+      "Hyaluronic acid",
+      "Hyauloric acid and zinc combination",
+      "I like that it has good quality and great vitamins",
+      "Good ingredients",
+      "I like all the vitamins it contains",
+      "The hyloronic acid",
+      "I like the high quality ingredients",
+      "Ingredients",
+      "The ingredients are gentle and non - irritating, suitable for sensitive skin.",
+      "I like this product is that I like this (ingredients context)",
+      "Ingredients",
+      "I like how foamy it looks (ingredient appeal)",
+      "I like the hyaluronic acid included in this",
+      "i like how it looks and the key ingredients",
+      "With hyaluronic acid, it won't make the skin dry and tight after use.",
+      "The ingredients are effective in soothing and repairing skin redness.",
+      "The ingredients can effectively improve the problem of oiliness and regulate sebum secretion.",
+      "The inclusion of totarol and cica as ingredients.",
+      "This product can solve my facial problems, and the care ingredients it contains are what I need.",
+      "i like the simple ingredients",
+      "the ingredients",
+      "The ingredients of the product.",
+      "Key ingredients look great",
+      "The hyaluronic acid ingredient",
+      "First off would be the ingredients and the look of the container itself",
+      "I like that it contains azelaic acid and is by anua"
+    ]
+  },
+  {
+    name: "저자극/민감성 피부 적합",
+    count: 22,
+    pct: "22.2%",
+    vocs: [
+      "I kinda prefer that this product offers a gentle cleansing effect on the skin.",
+      "I like that its ingredients are very transparent. Moreover, the formula is very gentle and non-irritating.",
+      "Rich in bubbles, containing ingredients such as nonyl acid and comfrey, it soothes sensitive skin.",
+      "It has a gentle formula tailored for sensitive skin, suitable for a wide range of people.",
+      "It has a gentle texture with moderate cleansing power and helps improve skin condition.",
+      "I like the packaging to have a gentle feel.",
+      "The ingredient labeling is very clear and gentle.",
+      "It has the effect of soothing sensitive skin and is very friendly and healthy in terms of ingredients.",
+      "I like its ingredients; they are relatively gentle, making it higher quality.",
+      "Its formula is gentle on sensitive skin and won't cause irritation.",
+      "It looks like it refreshes your skin really well",
+      "It looks like its for sensitive skin",
+      "The fact that it is for sensitive skin",
+      "I like that it is for cleansing and also it is a formula that is mindful of sensitive skin",
+      "Effective while soothing sensitive skin",
+      "made for sensitive skin",
+      "It's made for sensitive skin",
+      "I love the gentle texture on skin",
+      "dermatologist and skin type",
+      "Simple packaging, says co developed with dermatologist",
+      "The ingredients are gentle and non - irritating, suitable for sensitive skin.",
+      "The ingredients are effective in soothing and repairing skin redness."
+    ]
+  },
+  {
+    name: "세정력/클렌징 효과",
+    count: 13,
+    pct: "13.1%",
+    vocs: [
+      "It's helps clean my skin and makes it healthy",
+      "Its effect is very noticeable, and it has strong cleansing power.",
+      "Because this facial cleanser can effectively remove oil from the face and it suits my skin type.",
+      "What I like most is that it produces rich foam, which can effectively remove excess oil from the face.",
+      "The product contains salicylic acid, which can effectively control oil and improve blackheads.",
+      "It cleans my face and no acne",
+      "How it makes my oil less oily",
+      "I like it because it does a great job of cleaning my face.",
+      "It can effectively remove acne and clean the skin.",
+      "Effectiveness in removing germs",
+      "Cleansing product",
+      "It's very clean",
+      "The ingredients can effectively improve the problem of oiliness and regulate sebum secretion."
+    ]
+  },
+  {
+    name: "패키징 디자인 호감",
+    count: 12,
+    pct: "12.1%",
+    vocs: [
+      "The packaging looks very simple and elegant, and is extremely novel and attractive to me.",
+      "Its packaging is very innovative, which makes me feel that it's a brand that values innovation.",
+      "The packaging is of the extrusion type, which is very convenient and less likely to get dusty.",
+      "The packaging is simple, clean, and the effects are obvious.",
+      "The color scheme",
+      "packaging",
+      "It's packaging",
+      "The packaging",
+      "The packaging and how it has all of these different features",
+      "I love the way they are presenting the product. It looks very fancy.",
+      "The packaging and the information",
+      "The neutral color on the container"
+    ]
+  },
+  {
+    name: "피부과 전문의 공동개발",
+    count: 10,
+    pct: "10.1%",
+    vocs: [
+      "I like it because it's a product developed together with dermatologists.",
+      "For me, what I like is that the product has scientific validation.",
+      "It is recommended by dermatologists, with more professional and reliable ingredients.",
+      "Co developed with dermatologist",
+      "What I like most is that its recommended by cosmetic doctors.",
+      "It's dermatologist recommended",
+      "dermatologist and skin type",
+      "Simple packaging, says co developed with dermatologist",
+      "It was developed with dermatologists",
+      "I like that it is co developed with a dermatologist & looks gentle. (context)"
+    ]
+  },
+  {
+    name: "폼/젤 텍스처 선호",
+    count: 10,
+    pct: "10.1%",
+    vocs: [
+      "I like the way it presents the information and the foam elements.",
+      "I like that it produces a lot of foam when in use, which gives people a comfortable feeling.",
+      "My favorite is when there are a lot of bubbles and they are very thick and fluffy.",
+      "What I like most is that it produces rich foam.",
+      "I like that it's a gel",
+      "I like how foamy it looks",
+      "looks like it foams up well",
+      "It's gel cleanser",
+      "I love the gentle texture on skin",
+      "It texture"
+    ]
+  },
+  {
+    name: "보습/수분 효과",
+    count: 8,
+    pct: "8.1%",
+    vocs: [
+      "It has a gentle formula tailored for sensitive skin, suitable for a wide range of people, and keeps the skin hydrated.",
+      "Hydration",
+      "Hyaluronic acid (hydration context)",
+      "I like that it looks like its hydrating, at least from the picture",
+      "With hyaluronic acid, it won't make the skin dry and tight after use.",
+      "it involves hylaronic acid",
+      "Hyauloric acid and zinc combination",
+      "The hyaluronic acid ingredient"
+    ]
+  },
+  {
+    name: "여드름/피부 고민 케어",
+    count: 7,
+    pct: "7.1%",
+    vocs: [
+      "The product contains salicylic acid, which can effectively control oil and improve blackheads.",
+      "It cleans my face and no acne",
+      "Great for the skin and acne",
+      "It is very suitable for people with acne to improve their skin condition.",
+      "It can effectively remove acne and clean the skin.",
+      "I like what it promises to do",
+      "This product can solve my facial problems."
+    ]
+  },
+  {
+    name: "제품 정보 투명성/명확성",
+    count: 6,
+    pct: "6.1%",
+    vocs: [
+      "I rally like the description above; it's very clear and allows me to understand it clearly.",
+      "I like that its ingredients are very transparent.",
+      "The ingredient labeling is very clear and gentle.",
+      "The packaging is simple, clean, and the effects are obvious, which makes it more convenient when choosing.",
+      "The packaging and the information",
+      "it is easy to read the product (context)"
+    ]
+  },
+  {
+    name: "새로움/혁신적 느낌",
+    count: 5,
+    pct: "5.1%",
+    vocs: [
+      "Its packaging is very innovative, which makes me feel that it's a brand that values innovation.",
+      "It's very unique and well known for goodness",
+      "That it's new and stand out",
+      "Seems like a new and interesting product. (context)",
+      "It looks cool"
+    ]
+  },
+  {
+    name: "브랜드 호감",
+    count: 4,
+    pct: "4.0%",
+    vocs: [
+      "The brand",
+      "The brand, I know it'll work good",
+      "I like that it contains azelaic acid and is by anua",
+      "I have used it before and it actually works really well"
+    ]
+  },
+  {
+    name: "사용 편의성",
+    count: 3,
+    pct: "3.0%",
+    vocs: [
+      "The packaging is of the extrusion type, which is very convenient and less likely to get dusty.",
+      "ease of use",
+      "It's something I would use"
+    ]
+  }
+];
+
+let currentSort = "count";
+
+function render() {
+  const sorted = [...categories].sort((a, b) => {
+    if (currentSort === "count") return b.count - a.count;
+    return a.name.localeCompare(b.name, 'ko');
+  });
+  const maxCount = Math.max(...sorted.map(c => c.count));
+  const list = document.getElementById("catList");
+  list.innerHTML = sorted.map((cat, i) => `
+    <div class="cat-item">
+      <div class="cat-header" onclick="toggleVoc(${i})">
+        <span class="arrow" id="arrow-${i}">▶</span>
+        <span class="cat-label">${cat.name}</span>
+        <div class="bar-wrap"><div class="bar" style="width:${(cat.count/maxCount)*100}%"></div></div>
+        <span class="cat-count">${cat.count}</span>
+        <span class="cat-pct">${cat.pct}</span>
+      </div>
+      <div class="voc-list" id="voc-${i}">
+        ${cat.vocs.map(v => `<div class="voc-item">${v}</div>`).join("")}
+      </div>
+    </div>
+  `).join("");
+}
+
+function toggleVoc(i) {
+  const list = document.getElementById(`voc-${i}`);
+  const arrow = document.getElementById(`arrow-${i}`);
+  list.classList.toggle("open");
+  arrow.classList.toggle("open");
+}
+
+function sortBy(type) {
+  currentSort = type;
+  document.querySelectorAll(".toggle-btn").forEach(b => b.classList.remove("active"));
+  event.target.classList.add("active");
+  render();
+}
+
+render();
+</script>
+
+</body>
+</html>
